@@ -16,7 +16,9 @@
 package net.pevnostgames.property;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Property<T extends Serializable> {
@@ -24,6 +26,7 @@ public class Property<T extends Serializable> {
 	private final String key;
 	private final Class<T> vClass;
 	private final T defValue;
+	private final List<PropertyListener<T>> listeners = new ArrayList<PropertyListener<T>>();
 
 	/**
 	 * Creates a new Property Key with the specified key, class, and a default value of null.<br>
@@ -54,6 +57,35 @@ public class Property<T extends Serializable> {
 		this.vClass = valueClass;
 		this.defValue = defValue;
 		registry.put(key, this);
+	}
+
+	/**
+	 * Registers a new listener for this property.
+	 * 
+	 * @param listener to register
+	 * @return true if the listener was registered successfully
+	 */
+	public boolean registerListener(PropertyListener<T> listener) {
+		return listeners.add(listener);
+	}
+
+	/**
+	 * Unregisters a listener from this property.
+	 * 
+	 * @param listener to unregister
+	 * @return true if the listener was successfully unregistered
+	 */
+	public boolean removeListener(PropertyListener<T> listener) {
+		return listeners.remove(listener);
+	}
+
+	/**
+	 * Returns a copy of the listeners for this property
+	 * 
+	 * @return new list containing all the listeners for this property
+	 */
+	public List<PropertyListener<T>> getListeners() {
+		return new ArrayList<PropertyListener<T>>(listeners);
 	}
 
 	/**

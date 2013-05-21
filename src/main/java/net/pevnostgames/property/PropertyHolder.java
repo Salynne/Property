@@ -69,6 +69,11 @@ public class PropertyHolder implements Serializable {
 	 */
 	public <T extends Serializable> T setProperty(Property<T> key, T value) {
 		Object obj = properties.put(key.getKey(), value);
+
+		for (PropertyListener<T> listener : key.getListeners()) {
+			listener.onPropertyUpdate(new PropertyEvent<T>(this, key, value));
+		}
+
 		if (obj == null) {
 			return null;
 		}
