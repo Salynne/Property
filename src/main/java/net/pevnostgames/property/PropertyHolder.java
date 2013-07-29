@@ -68,20 +68,19 @@ public class PropertyHolder implements Serializable {
 	 * @return previous value of the property, or null if the property did not have a value already
 	 */
 	public <T extends Serializable> T setProperty(Property<T> key, T value) {
-		Object obj = properties.put(key.getKey(), value);
+		T oldVal = getProperty(key);
+		PropertyEvent<T> event = new PropertyEvent<T>(key, this, oldVal, value);
+		key.invokeEvent(event);
+		value = event.getNewValue();
+		properties.put(key.getKey(), value);
 
-		for (PropertyListener<T> listener : key.getListeners()) {
-			listener.onPropertyUpdate(new PropertyEvent<T>(this, key, value));
-		}
-
-		if (obj == null) {
-			return null;
-		}
-
-		T oldVal = null;
-		if (key.getValueClass().isInstance(obj)) {
-			oldVal = key.getValueClass().cast(obj);
-		}
 		return oldVal;
+	}
+
+	@Override
+	public String toString() {
+		return "PropertyHolder{" +
+				"properties=" + properties +
+				'}';
 	}
 }

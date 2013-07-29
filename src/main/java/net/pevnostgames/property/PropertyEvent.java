@@ -4,25 +4,45 @@ import java.io.Serializable;
 
 public class PropertyEvent<T extends Serializable> {
 
-	private final PropertyHolder holder;
 	private final Property<T> property;
-	private final T value;
+	private final PropertyHolder holder;
+	private final T oldValue;
+	private T newValue;
 
-	protected PropertyEvent(PropertyHolder holder, Property<T> property, T value) {
-		this.holder = holder;
+	protected PropertyEvent(Property<T> property, PropertyHolder holder, T oldValue, T newValue) {
 		this.property = property;
-		this.value = value;
-	}
-
-	public PropertyHolder getHolder() {
-		return holder;
+		this.holder = holder;
+		this.oldValue = oldValue;
+		this.newValue = newValue;
 	}
 
 	public Property<T> getProperty() {
 		return property;
 	}
 
-	public T getValue() {
-		return value;
+	public PropertyHolder getHolder() {
+		return holder;
+	}
+
+	public T getOldValue() {
+		return oldValue;
+	}
+
+	public T getNewValue() {
+		return newValue;
+	}
+
+	public void setNewValue(T newValue) {
+		this.newValue = newValue;
+	}
+
+	@Override
+	public String toString() {
+		return "PropertyEvent{" +
+				"property=" + property +
+				", holder=" + holder +
+				", oldValue=" + oldValue +
+				", newValue=" + newValue +
+				'}';
 	}
 }

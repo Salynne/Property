@@ -1,13 +1,8 @@
 package net.pevnostgames.property;
 
-import java.io.Serializable;
+/**
+ * Implementing this interface declares that this class is intended to listen for property changes.
+ */
+public interface PropertyListener {
 
-public interface PropertyListener<T extends Serializable> {
-
-	/**
-	 * Called when the given property is updated.
-	 * 
-	 * @param event representing the property update
-	 */
-	public void onPropertyUpdate(PropertyEvent<T> event);
 }

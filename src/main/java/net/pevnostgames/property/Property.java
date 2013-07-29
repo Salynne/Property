@@ -16,17 +16,20 @@
 package net.pevnostgames.property;
 
 import java.io.Serializable;
-import java.util.ArrayList;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class Property<T extends Serializable> {
 	private static final Map<String, Property<?>> registry = new HashMap<String, Property<?>>();
 	private final String key;
 	private final Class<T> vClass;
 	private final T defValue;
-	private final List<PropertyListener<T>> listeners = new ArrayList<PropertyListener<T>>();
+	private final Map<PropertyListener, Method> globalListeners = new HashMap<PropertyListener, Method>();
+	private final Map<PropertyHolder, Map<PropertyListener, Method>> holderListeners = new HashMap<PropertyHolder, Map<PropertyListener, Method>>();
 
 	/**
 	 * Creates a new Property Key with the specified key, class, and a default value of null.<br>
@@ -60,32 +63,30 @@ public class Property<T extends Serializable> {
 	}
 
 	/**
+	 * Registers a listener for a specific {@link PropertyHolder} with this specific property.
+	 * Any changes to this property on the the specified holder will fire an event to the listener.
+	 *
+	 * @param holder to watch for changes to this property
+	 * @param listener to report changes for this property to
+	 */
+	public void registerListener(PropertyHolder holder, PropertyListener listener) {
+		Map<PropertyListener, Method> listeners = holderListeners.get(holder);
+		if (listeners == null) {
+			listeners = new HashMap<PropertyListener, Method>();
+		}
+
+		listeners.put(listener, getListenerMethod(listener));
+		holderListeners.put(holder, listeners);
+	}
+
+	/**
 	 * Registers a new listener for this property.
+	 * Any changes to this property in any holder will fire an event to the listener.
 	 * 
-	 * @param listener to register
-	 * @return true if the listener was registered successfully
+	 * @param listener to report changes for this property to
 	 */
-	public boolean registerListener(PropertyListener<T> listener) {
-		return listeners.add(listener);
-	}
-
-	/**
-	 * Unregisters a listener from this property.
-	 * 
-	 * @param listener to unregister
-	 * @return true if the listener was successfully unregistered
-	 */
-	public boolean removeListener(PropertyListener<T> listener) {
-		return listeners.remove(listener);
-	}
-
-	/**
-	 * Returns a copy of the listeners for this property
-	 * 
-	 * @return new list containing all the listeners for this property
-	 */
-	public List<PropertyListener<T>> getListeners() {
-		return new ArrayList<PropertyListener<T>>(listeners);
+	public void registerGlobalListener(PropertyListener listener) {
+		globalListeners.put(listener, getListenerMethod(listener));
 	}
 
 	/**
@@ -119,6 +120,55 @@ public class Property<T extends Serializable> {
 		return vClass;
 	}
 
+	private Method getListenerMethod(PropertyListener listener) {
+		Method[] methods = listener.getClass().getMethods();
+
+		for (Method method : methods) {
+			if (method.isAnnotationPresent(PropertyChanged.class)) {
+				PropertyChanged changed = method.getAnnotation(PropertyChanged.class);
+				if (changed.key().equals(getKey())) {
+					return method;
+				}
+			}
+		}
+		throw new RuntimeException(listener + " does not contain a method valid to listen for " + this + " changes.");
+	}
+
+	protected void invokeEvent(PropertyEvent<T> event) {
+		Set<Map.Entry<PropertyListener, Method>> entries = globalListeners.entrySet();
+		for (Map.Entry<PropertyListener, Method> entry : entries) {
+			Method method = entry.getValue();
+			PropertyListener listener = entry.getKey();
+			try {
+				if (method != null) {
+					method.invoke(listener, event);
+				}
+			} catch (IllegalAccessException e) {
+				e.printStackTrace();
+			} catch (InvocationTargetException e) {
+				e.printStackTrace();
+			}
+		}
+
+		Map<PropertyListener, Method> listeners = holderListeners.get(event.getHolder());
+		if (listeners != null) {
+			entries = listeners.entrySet();
+			for (Map.Entry<PropertyListener, Method> entry : entries) {
+				Method method = entry.getValue();
+				PropertyListener listener = entry.getKey();
+				try {
+					if (method != null) {
+						method.invoke(listener, event);
+					}
+				} catch (IllegalAccessException e) {
+					e.printStackTrace();
+				} catch (InvocationTargetException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+
 	@Override
 	public int hashCode() {
 		return key.hashCode();
@@ -126,10 +176,7 @@ public class Property<T extends Serializable> {
 
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof Property) {
-			return ((Property<?>) obj).getKey().equals(key);
-		}
-		return false;
+		return obj instanceof Property && ((Property<?>) obj).getKey().equals(key);
 	}
 
 	@Override
